@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <h1 class="admin-title">Admin Dashboard</h1>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+                <h3>Total Users</h3>
+                <p id="totalUsers">-</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💬</div>
+            <div class="stat-info">
+                <h3>Total Messages</h3>
+                <p id="totalMessages">-</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+                <h3>Failed Logins</h3>
+                <p id="failedLogins">-</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-info">
+                <h3>Online Now</h3>
+                <p id="onlineUsers">-</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="admin-tabs">
+        <button class="tab-btn active" data-tab="users">👥 Users</button>
+        <button class="tab-btn" data-tab="logs">📜 Security Logs</button>
+        <button class="tab-btn" data-tab="messages">💬 Messages</button>
+    </div>
+    
+    <div id="usersTab" class="tab-content active">
+        <div class="table-container">
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Username</th><th>Status</th><th>Last Seen</th><th>Messages</th><th>Role</th><th>Actions</th></tr></thead>
+                <tbody id="usersTableBody"><tr><td colspan="7">Loading users...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="logsTab" class="tab-content">
+        <div class="table-container">
+            <table class="admin-table">
+                <thead><tr><th>Time</th><th>User</th><th>Event</th><th>IP Address</th></tr></thead>
+                <tbody id="logsTableBody"><tr><td colspan="4">Loading logs...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="messagesTab" class="tab-content">
+        <div class="table-container">
+            <table class="admin-table">
+                <thead><tr><th>Time</th><th>From</th><th>To</th><th>Message (Encrypted)</th></tr></thead>
+                <tbody id="messagesTableBody"><tr><td colspan="4">Loading messages...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCsrfToken() {
+    const inp = document.querySelector('input[name="csrf_token"]');
+    return inp ? inp.value : '';
+}
+
+let currentTab = 'users';
+let refreshInterval = null;
+
+function showTab(tabName) {
+    currentTab = tabName;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.toggle('active', tab.id === tabName + 'Tab');
+    });
+    if (tabName === 'users') loadUsers();
+    else if (tabName === 'logs') loadLogs();
+    else if (tabName === 'messages') loadMessages();
+}
+
+async function loadStats() {
+    try {
+        const res = await fetch('/admin/stats');
+        const data = await res.json();
+        document.getElementById('totalUsers').innerText = data.total_users || 0;
+        document.getElementById('totalMessages').innerText = data.total_messages || 0;
+        document.getElementById('failedLogins').innerText = data.failed_logins || 0;
+        document.getElementById('onlineUsers').innerText = data.online_users || 0;
+    } catch(e) { console.error(e); }
+}
+
+async function loadUsers() {
+    try {
+        const res = await fetch('/admin/users');
+        const data = await res.json();
+        const tbody = document.getElementById('usersTableBody');
+        if (data.users && data.users.length) {
+            tbody.innerHTML = data.users.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${escapeHtml(u.username)}</td>
+                    <td><span class="status-badge ${u.is_online ? 'online' : 'offline'}">${u.is_online ? 'Online' : 'Offline'}</span></td>
+                    <td>${u.last_seen || 'Never'}</td>
+                    <td>${u.message_count || 0}</td>
+                    <td><span class="role-badge ${u.role === 'admin' ? 'admin' : 'user'}">${u.role || 'user'}</span></td>
+                    <td>
+                        <button class="action-btn view" data-id="${u.id}">View</button>
+                        ${u.role !== 'admin' ? `<button class="action-btn promote" data-id="${u.id}">Make Admin</button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+            // attach event listeners
+            document.querySelectorAll('.action-btn.view').forEach(btn => {
+                btn.onclick = () => viewUserMessages(parseInt(btn.dataset.id));
+            });
+            document.querySelectorAll('.action-btn.promote').forEach(btn => {
+                btn.onclick = () => promoteUser(parseInt(btn.dataset.id));
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7">No users found</td></tr>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function loadLogs() {
+    try {
+        const res = await fetch('/admin/logs');
+        const data = await res.json();
+        const tbody = document.getElementById('logsTableBody');
+        if (data.logs && data.logs.length) {
+            tbody.innerHTML = data.logs.map(l => `
+                <tr>
+                    <td>${new Date(l.timestamp).toLocaleString()}</td>
+                    <td>${escapeHtml(l.username || 'System')}</td>
+                    <td><span class="event-badge ${l.event.replace(/_/g, '-')}">${escapeHtml(l.event)}</span></td>
+                    <td>${escapeHtml(l.ip_address || '-')}</td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4">No logs found</td></tr>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function loadMessages() {
+    try {
+        const res = await fetch('/admin/messages');
+        const data = await res.json();
+        const tbody = document.getElementById('messagesTableBody');
+        if (data.messages && data.messages.length) {
+            tbody.innerHTML = data.messages.map(m => `
+                <tr>
+                    <td>${new Date(m.timestamp).toLocaleString()}</td>
+                    <td>${escapeHtml(m.sender_name || m.sender_id)}</td>
+                    <td>${escapeHtml(m.receiver_name || m.receiver_id)}</td>
+                    <td class="encrypted-msg">${escapeHtml(m.encrypted_message.substring(0, 60))}...</td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4">No messages found</td></tr>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function promoteUser(userId) {
+    if (!confirm('Make this user an admin?')) return;
+    try {
+        const res = await fetch('/admin/set-role', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ user_id: userId, role: 'admin' })
+        });
+        if (res.ok) {
+            alert('User promoted to admin');
+            loadUsers();
+        } else {
+            alert('Failed to promote user');
+        }
+    } catch(e) { alert('Error'); }
+}
+
+function viewUserMessages(userId) {
+    alert(`View messages for user ${userId} – coming soon`);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// attach tab listeners
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+});
+
+// initial loads
+loadStats();
+loadUsers();
+loadLogs();
+loadMessages();
+
+// auto-refresh every 10 seconds
+refreshInterval = setInterval(() => {
+    loadStats();
+    if (currentTab === 'users') loadUsers();
+    else if (currentTab === 'logs') loadLogs();
+    else if (currentTab === 'messages') loadMessages();
+}, 10000);
+
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) clearInterval(refreshInterval);
+});
+</script>
+{% endblock %}

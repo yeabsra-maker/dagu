@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Flask
+instance/
+.webassets-cache
+.env
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups
+*.sql
+*.tar.gz
+*.backup
+
+# Encryption keys
+*.key
+encryption.key*
+
+# Uploads
+static/uploads/avatars/*
+static/uploads/files/*
+!static/uploads/avatars/.gitkeep
+!static/uploads/files/.gitkeep
+
+# SSL certificates
+ssl/*.pem
+ssl/*.crt
+ssl/*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/*.log
+!logs/.gitkeep
+
+# Environment variables
+.env
+.env.local

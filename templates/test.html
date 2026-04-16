@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+</head>
+<body>
+    <h1>Test Page</h1>
+    <form id="testForm">
+        <input type="text" id="testInput" placeholder="Type something">
+        <button type="button" id="submitBtn">Submit</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('submitBtn').onclick = function() {
+            const value = document.getElementById('testInput').value;
+            document.getElementById('result').innerHTML = 'You typed: ' + value;
+            console.log('Button clicked! Value:', value);
+            return false;
+        };
+    </script>
+</body>
+</html>

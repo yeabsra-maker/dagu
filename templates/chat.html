@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Chat{% endblock %}
+
+{% block content %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<div class="chat-layout">
+    <!-- Sidebar (Chats List) -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-comments"></i> Chats</h3>
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" id="messageSearch" placeholder="Search messages...">
+            </div>
+        </div>
+        <div id="userList" class="user-list">
+            <div class="loading">Loading conversations...</div>
+        </div>
+        <div style="padding: 12px;">
+            <button id="addUserBtn" class="btn-small" style="width:100%"><i class="fas fa-user-plus"></i> Add User</button>
+            <button id="createGroupBtn" class="btn-small" style="width:100%; margin-top:8px;"><i class="fas fa-users"></i> New Group</button>
+        </div>
+    </div>
+
+    <!-- Chat Window -->
+    <div class="chat-window">
+        <div id="chatHeader" class="chat-header">
+            <div class="chat-header-left">
+                <div class="avatar-upload-container">
+                    <img id="currentUserAvatar" src="/static/images/default-avatar.png" class="avatar">
+                    <button id="uploadAvatarBtn" class="avatar-upload-btn" title="Change picture">📷</button>
+                    <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+                </div>
+                <h3 id="selectedUser">Select a user to start chatting</h3>
+            </div>
+            <div>
+                <button id="searchBtn" class="search-btn" title="Search messages"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+
+        <div id="messagesContainer" class="messages-container">
+            <div class="welcome-message">👋 Select a user from the sidebar to start a secure conversation</div>
+        </div>
+
+        <div id="typingIndicator" style="display: none;">✍️ Someone is typing...</div>
+
+        <!-- Message Input – always visible at bottom -->
+        <div id="messageForm" class="message-form" style="display: flex !important; flex-shrink: 0;">
+            <div class="input-icons">
+                <button class="input-icon-btn" id="emojiBtn" title="Emoji">😊</button>
+                <button class="input-icon-btn" id="attachBtn" title="Attach file">📎</button>
+            </div>
+            <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea>
+            <button id="sendBtn" title="Send message"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- User Info Panel (right column) -->
+    <div class="user-info-panel" id="userInfoPanel">
+        <div class="profile-card">
+            <img id="infoAvatar" src="/static/images/default-avatar.png" class="avatar-large">
+            <h4 id="infoUsername">Select a user</h4>
+            <p class="status-text" id="infoStatus">—</p>
+        </div>
+        <div class="quick-actions">
+            <button id="clearChatBtn"><i class="fas fa-trash-alt"></i> Clear Conversation</button>
+            <button id="blockUserBtn"><i class="fas fa-ban"></i> Block User</button>
+        </div>
+        <div class="shared-media">
+            <h4>Shared Media</h4>
+            <div id="sharedImages">No images shared yet.</div>
+        </div>
+        <!-- Change Password Button -->
+        <button id="changePasswordBtn" class="btn-primary" style="width:100%; margin-top:10px;">
+            <i class="fas fa-key"></i> Change Password
+        </button>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="addUserModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Add User to Chat</h3>
+        <input type="text" id="searchUserInput" placeholder="Search by username...">
+        <div id="searchResults" class="search-results">Type to search...</div>
+    </div>
+</div>
+<div id="createGroupModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Create New Group</h3>
+        <input type="text" id="groupName" placeholder="Group name">
+        <input type="text" id="groupMemberSearch" placeholder="Search members...">
+        <div id="groupMemberResults" class="search-results"></div>
+        <div id="selectedMembers" class="selected-members"></div>
+        <button id="createGroupSubmit" class="btn-primary">Create Group</button>
+    </div>
+</div>
+<div id="searchModal" class="modal" style="display:none;">
+    <div class="modal-content search-modal">
+        <span class="close">&times;</span>
+        <h3>Search Results</h3>
+        <div id="searchResultsList" class="search-results-list"></div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePasswordModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Change Password</h3>
+        <div id="pwError" class="error-message" style="display:none;"></div>
+        <div id="pwSuccess" class="success-message" style="display:none;"></div>
+        <form id="changePasswordForm">
+            <div class="form-group">
+                <label for="oldPassword">Current Password:</label>
+                <input type="password" id="oldPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password:</label>
+                <input type="password" id="newPassword" required>
+                <small>Minimum 8 characters, 1 uppercase, 1 number, 1 special character</small>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password:</label>
+                <input type="password" id="confirmPassword" required>
+            </div>
+            <button type="submit" class="btn-primary">Update Password</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='chat.js') }}"></script>
+{% endblock %}
