@@ -7,6 +7,7 @@ import os
 import time
 import bcrypt
 import logging
+import traceback
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -371,7 +372,7 @@ def current_avatar():
     from messages import get_current_user_avatar
     return jsonify({"avatar_url": get_current_user_avatar()})
 
-# ==================== USER DETAILS (right panel) ====================
+# ==================== USER DETAILS ====================
 @app.route("/get-user-details/<int:user_id>")
 def api_get_user_details(user_id):
     from messages import get_user_status
@@ -418,7 +419,7 @@ def api_clear_conversation():
         cursor.close()
         conn.close()
 
-# ==================== DUMMY GROUP ENDPOINT (to avoid 404) ====================
+# ==================== DUMMY GROUP ENDPOINT ====================
 @app.route("/my-groups", methods=["GET"])
 def my_groups():
     return jsonify({"groups": []})
@@ -443,7 +444,6 @@ def change_password():
     cursor = conn.cursor()
     
     try:
-        # Get current password hash
         cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
         row = cursor.fetchone()
         if not row:
@@ -451,23 +451,18 @@ def change_password():
         
         stored_hash = row[0]
         
-        # Verify old password
         if not bcrypt.checkpw(old_password.encode('utf-8'), stored_hash.encode('utf-8')):
             return jsonify({"error": "Current password is incorrect"}), 401
         
-        # Validate new password strength
         is_valid, message = validate_password(new_password)
         if not is_valid:
             return jsonify({"error": message}), 400
         
-        # Hash new password
         new_hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
         
-        # Update database
         cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hashed.decode('utf-8'), user_id))
         conn.commit()
         
-        # Log the event
         cursor.execute(
             "INSERT INTO security_logs (user_id, event, ip_address) VALUES (%s, %s, %s)",
             (user_id, 'password_changed', request.remote_addr)
@@ -484,9 +479,9 @@ def change_password():
         cursor.close()
         conn.close()
 
-# ==================== FILE UPLOAD (shared files) ====================
+# ==================== FILE UPLOAD ====================
 ALLOWED_FILE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'doc', 'docx', 'zip', 'mp3', 'mp4'}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
 UPLOAD_FILE_FOLDER = 'static/uploads/files'
 
 os.makedirs(UPLOAD_FILE_FOLDER, exist_ok=True)
@@ -528,6 +523,25 @@ def upload_file():
         "size": size
     })
 
+# ==================== TEST DATABASE CONNECTION ====================
+@app.route('/test-db')
+def test_db():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        return f"✅ Database connection successful! Result: {result}"
+    except Exception as e:
+        return f"❌ Database error:<br><pre>{traceback.format_exc()}</pre>"
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 # ==================== FRONTEND ROUTES ====================
 @app.route("/")
 def home():
@@ -544,15 +558,6 @@ def register_page():
 @app.route("/chat")
 def chat_page():
     return render_template("chat.html", csrf_token=generate_csrf())
-
-@app.route('/test-db')
-def test_db():
-    from sqlalchemy import text
-    try:
-        result = db.session.execute(text('SELECT 1'))
-        return "✅ Database connection successful!"
-    except Exception as e:
-        return f"❌ Database error: {str(e)}"
 
 # ==================== RUN ====================
 if __name__ == "__main__":
