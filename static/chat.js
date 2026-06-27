@@ -199,7 +199,8 @@ async function initChat() {
     currentUser = await checkAuth();
     if (!currentUser) return;
     loadConversations();
-    setupAddUserModal();        // <-- THIS IS THE FIX: ensure it's called
+    setupAddUserModal();
+    console.log('Add user modal setup complete'); // Debug line
     setupAvatarUpload();
     loadSavedAvatar();
     setupEmojiPicker();
