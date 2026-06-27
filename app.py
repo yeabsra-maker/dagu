@@ -542,6 +542,78 @@ def test_db():
         if conn:
             conn.close()
 
+# ==================== INITIALIZE DATABASE TABLES ====================
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Check if 'users' table exists
+        cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
+        exists = cursor.fetchone()[0]
+        if not exists:
+            print("Creating tables...")
+            # Users table
+            cursor.execute("""
+                CREATE TABLE users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    role VARCHAR(20) DEFAULT 'user',
+                    avatar VARCHAR(255),
+                    is_online BOOLEAN DEFAULT FALSE,
+                    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Messages table
+            cursor.execute("""
+                CREATE TABLE messages (
+                    id SERIAL PRIMARY KEY,
+                    sender_id INTEGER REFERENCES users(id),
+                    receiver_id INTEGER REFERENCES users(id),
+                    encrypted_message TEXT NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    delivered BOOLEAN DEFAULT FALSE,
+                    seen BOOLEAN DEFAULT FALSE,
+                    seen_at TIMESTAMP
+                )
+            """)
+            # Security logs table
+            cursor.execute("""
+                CREATE TABLE security_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    event VARCHAR(100) NOT NULL,
+                    ip_address VARCHAR(45),
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Message reactions table
+            cursor.execute("""
+                CREATE TABLE message_reactions (
+                    id SERIAL PRIMARY KEY,
+                    message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    reaction VARCHAR(10) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(message_id, user_id)
+                )
+            """)
+            conn.commit()
+            print("✅ Tables created successfully.")
+        else:
+            print("✅ Tables already exist.")
+    except Exception as e:
+        print(f"❌ Error initializing database: {e}")
+        conn.rollback()
+    finally:
+        cursor.close()
+        conn.close()
+
+# Run initialization when the app starts
+with app.app_context():
+    init_db()
+
 # ==================== FRONTEND ROUTES ====================
 @app.route("/")
 def home():
