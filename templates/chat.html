@@ -9,10 +9,6 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h3><i class="fas fa-comments"></i> Chats</h3>
-            <div class="search-container">
-                <i class="fas fa-search"></i>
-                <input type="text" id="messageSearch" placeholder="Search messages...">
-            </div>
         </div>
         <div id="userList" class="user-list">
             <div class="loading">Loading conversations...</div>
@@ -34,7 +30,8 @@
                 </div>
                 <h3 id="selectedUser">Select a user to start chatting</h3>
             </div>
-            <div>
+            <div class="chat-header-right">
+                <input type="text" id="messageSearch" placeholder="🔍 Search messages..." style="display: none;">
                 <button id="searchBtn" class="search-btn" title="Search messages"><i class="fas fa-search"></i></button>
             </div>
         </div>
@@ -45,7 +42,7 @@
 
         <div id="typingIndicator" style="display: none;">✍️ Someone is typing...</div>
 
-        <!-- Message Input – always visible at bottom -->
+        <!-- Message Input -->
         <div id="messageForm" class="message-form" style="display: flex !important; flex-shrink: 0;">
             <div class="input-icons">
                 <button class="input-icon-btn" id="emojiBtn" title="Emoji">😊</button>
@@ -56,7 +53,7 @@
         </div>
     </div>
 
-    <!-- User Info Panel (right column) -->
+    <!-- User Info Panel -->
     <div class="user-info-panel" id="userInfoPanel">
         <div class="profile-card">
             <img id="infoAvatar" src="/static/images/default-avatar.png" class="avatar-large">

@@ -55,7 +55,7 @@ function setupEmojiPicker() {
     });
 }
 
-// ========== FILE ATTACHMENT (UPLOAD) ==========
+// ========== FILE ATTACHMENT ==========
 function setupFileAttachment() {
     const attachBtn = document.getElementById('attachBtn');
     if (!attachBtn) return;
@@ -199,12 +199,12 @@ async function initChat() {
     currentUser = await checkAuth();
     if (!currentUser) return;
     loadConversations();
-    setupAddUserModal();
+    setupAddUserModal();        // <-- THIS IS THE FIX: ensure it's called
     setupAvatarUpload();
     loadSavedAvatar();
     setupEmojiPicker();
     setupFileAttachment();
-    setupChangePassword();   // <-- NEW: password change modal
+    setupChangePassword();
     const navMenu = document.getElementById('navMenu');
     if (navMenu) navMenu.innerHTML = '<span>Welcome, ' + currentUser.username + '</span><button class="theme-toggle" onclick="toggleTheme()">🌙</button><a href="/admin">Admin</a><a href="/chat">Chat</a><a href="#" onclick="logout()">Logout</a>';
     refreshInterval = setInterval(() => {
@@ -214,7 +214,7 @@ async function initChat() {
     heartbeatInterval = setInterval(updateHeartbeat, 30000);
     typingCheckInterval = setInterval(checkTypingStatus, 2000);
 
-    // Force message form visibility (fallback)
+    // Force message form visibility
     setTimeout(() => {
         const msgForm = document.getElementById('messageForm');
         if (msgForm) {
@@ -470,6 +470,86 @@ function setupChangePassword() {
             }
         });
     }
+}
+
+// ========== SEARCH FUNCTIONALITY ==========
+// The search button toggles the search input
+document.getElementById('searchBtn')?.addEventListener('click', function() {
+    const searchInput = document.getElementById('messageSearch');
+    if (searchInput) {
+        if (searchInput.style.display === 'none') {
+            searchInput.style.display = 'block';
+            searchInput.focus();
+        } else {
+            searchInput.style.display = 'none';
+            searchInput.value = '';
+            // Optionally clear search results
+            document.getElementById('searchResultsList').innerHTML = '<div class="loading">Enter a search term...</div>';
+            document.getElementById('searchModal').style.display = 'none';
+        }
+    }
+});
+
+// Search on Enter key
+document.getElementById('messageSearch')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        const query = this.value.trim();
+        if (query.length >= 2) {
+            performSearch(query);
+        }
+    }
+});
+
+// ========== PERFORM SEARCH ==========
+async function performSearch(query) {
+    if (!query || query.length < 2) {
+        alert('Please enter at least 2 characters');
+        return;
+    }
+    const resultsDiv = document.getElementById('searchResultsList');
+    const searchModal = document.getElementById('searchModal');
+    if (resultsDiv) resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
+    if (searchModal) searchModal.style.display = 'flex';
+
+    try {
+        const res = await fetch(`/search-messages?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (resultsDiv) {
+            if (data.messages && data.messages.length > 0) {
+                const highlightRegex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+                resultsDiv.innerHTML = data.messages.map(msg => {
+                    const highlightedMsg = msg.message.replace(highlightRegex, '<span class="search-result-highlight">$1</span>');
+                    return `
+                        <div class="search-result-item" onclick="goToConversation(${msg.other_user_id}, '${msg.other_username}')">
+                            <div class="search-result-header">
+                                <span class="search-result-user">💬 ${escapeHtml(msg.other_username)}</span>
+                                <span class="search-result-time">${new Date(msg.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div class="search-result-message">${highlightedMsg}</div>
+                            <div class="search-result-context">${msg.is_me ? 'You said' : `${msg.other_username} said`}</div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                resultsDiv.innerHTML = '<div class="loading">No messages found matching "' + escapeHtml(query) + '"</div>';
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        if (resultsDiv) resultsDiv.innerHTML = '<div class="loading">Search failed. Please try again.</div>';
+    }
+}
+
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function goToConversation(userId, username) {
+    const searchModal = document.getElementById('searchModal');
+    const searchInput = document.getElementById('messageSearch');
+    if (searchModal) searchModal.style.display = 'none';
+    if (searchInput) searchInput.value = '';
+    selectUser(userId, username);
 }
 
 // ========== EVENT LISTENERS ==========
