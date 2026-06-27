@@ -545,6 +545,15 @@ def register_page():
 def chat_page():
     return render_template("chat.html", csrf_token=generate_csrf())
 
+@app.route('/test-db')
+def test_db():
+    from sqlalchemy import text
+    try:
+        result = db.session.execute(text('SELECT 1'))
+        return "✅ Database connection successful!"
+    except Exception as e:
+        return f"❌ Database error: {str(e)}"
+
 # ==================== RUN ====================
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000, ssl_context=('ssl/cert.pem', 'ssl/key.pem'))
